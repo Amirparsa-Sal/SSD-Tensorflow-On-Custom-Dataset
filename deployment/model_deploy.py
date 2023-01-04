@@ -105,7 +105,7 @@ import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
 
-slim = tf.contrib.slim
+import tf_slim as slim
 
 
 __all__ = ['create_clones',

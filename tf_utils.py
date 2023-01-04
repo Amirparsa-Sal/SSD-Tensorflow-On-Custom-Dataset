@@ -18,9 +18,8 @@ import os
 from pprint import pprint
 
 import tensorflow as tf
-from tensorflow.contrib.slim.python.slim.data import parallel_reader
-
-slim = tf.contrib.slim
+import tf_slim as slim
+from tf_slim.data import parallel_reader
 
 
 # =========================================================================== #

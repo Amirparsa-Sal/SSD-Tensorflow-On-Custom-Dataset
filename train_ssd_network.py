@@ -21,8 +21,7 @@ from deployment import model_deploy
 from nets import nets_factory
 from preprocessing import preprocessing_factory
 import tf_utils
-
-slim = tf.contrib.slim
+import tf_slim as slim
 
 DATA_FORMAT = 'NCHW'
 

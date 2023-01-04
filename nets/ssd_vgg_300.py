@@ -58,7 +58,7 @@ import tf_extended as tfe
 from nets import custom_layers
 from nets import ssd_common
 
-slim = tf.contrib.slim
+import tf_slim as slim
 
 
 # =========================================================================== #

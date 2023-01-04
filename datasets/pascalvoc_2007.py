@@ -19,8 +19,7 @@
 #Modify the entire file according to your own training data
 import tensorflow as tf
 from datasets import pascalvoc_common
-
-slim = tf.contrib.slim
+import tf_slim as slim
 
 FILE_PATTERN = 'voc_2007_%s_*.tfrecord'
 ITEMS_TO_DESCRIPTIONS = {

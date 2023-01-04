@@ -19,8 +19,7 @@ import os
 import tensorflow as tf
 #import dataset_utils
 from datasets import dataset_utils
-
-slim = tf.contrib.slim
+import tf_slim as slim
 
 VOC_LABELS = {
     'none': (0, 'Background'),

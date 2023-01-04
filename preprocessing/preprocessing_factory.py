@@ -26,7 +26,7 @@ import tensorflow as tf
 
 from preprocessing import ssd_vgg_preprocessing
 
-slim = tf.contrib.slim
+import tf_slim as slim
 
 
 def get_preprocessing(name, is_training=False):

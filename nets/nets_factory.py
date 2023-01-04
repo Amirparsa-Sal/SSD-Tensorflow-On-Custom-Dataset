@@ -28,7 +28,7 @@ import tensorflow as tf
 from nets import ssd_vgg_300
 #from nets import ssd_vgg_512
 
-slim = tf.contrib.slim
+import tf_slim as slim
 
 networks_map = {#'vgg_a': vgg.vgg_a,
                 #'vgg_16': vgg.vgg_16,

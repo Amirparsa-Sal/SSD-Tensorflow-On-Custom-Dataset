@@ -14,7 +14,7 @@
 # ==============================================================================
 """Pre-processing images for SSD-type networks.
 """
-from enum import Enum, IntEnum
+from enum import IntEnum
 import numpy as np
 
 import tensorflow as tf
@@ -23,9 +23,6 @@ import tf_extended as tfe
 from tensorflow.python.ops import control_flow_ops
 
 from preprocessing import tf_image
-from nets import ssd_common
-
-slim = tf.contrib.slim
 
 # Resizing strategies.
 Resize = IntEnum('Resize', ('NONE',                # Nothing!
