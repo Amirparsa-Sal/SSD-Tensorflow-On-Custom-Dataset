@@ -51,7 +51,7 @@ def get_shape(x, rank=None):
             rank = len(static_shape)
         else:
             static_shape = x.get_shape().with_rank(rank).as_list()
-        dynamic_shape = tf.unstack(tf.shape(x), rank)
+        dynamic_shape = tf.unstack(tf.shape(input=x), rank)
         return [s if s is not None else d
                 for s, d in zip(static_shape, dynamic_shape)]
 
@@ -70,7 +70,7 @@ def pad_axis(x, offset, size, axis=0, name=None):
       Padded tensor whose dimension on `axis` is `size`, or greater if
       the input vector was larger.
     """
-    with tf.name_scope(name, 'pad_axis'):
+    with tf.compat.v1.name_scope(name, 'pad_axis'):
         shape = get_shape(x)
         rank = len(shape)
         # Padding description.
@@ -78,7 +78,7 @@ def pad_axis(x, offset, size, axis=0, name=None):
         pad1 = tf.stack([0]*axis + [offset] + [0]*(rank-axis-1))
         pad2 = tf.stack([0]*axis + [new_size] + [0]*(rank-axis-1))
         paddings = tf.stack([pad1, pad2], axis=1)
-        x = tf.pad(x, paddings, mode='CONSTANT')
+        x = tf.pad(tensor=x, paddings=paddings, mode='CONSTANT')
         # Reshape, to get fully defined shape if possible.
         # TODO: fix with tf.slice
         shape[axis] = size

@@ -393,7 +393,7 @@ def tensor_shape(x, rank=3):
         return x.get_shape().as_list()
     else:
         static_shape = x.get_shape().with_rank(rank).as_list()
-        dynamic_shape = tf.unstack(tf.shape(x), rank)
+        dynamic_shape = tf.unstack(tf.shape(input=x), rank)
         return [s if s is not None else d
                 for s, d in zip(static_shape, dynamic_shape)]
 
@@ -447,7 +447,7 @@ def ssd_net(inputs,
 
     # End_points collect relevant activations for external use.
     end_points = {}
-    with tf.variable_scope(scope, 'ssd_300_vgg', [inputs], reuse=reuse):
+    with tf.compat.v1.variable_scope(scope, 'ssd_300_vgg', [inputs], reuse=reuse):
         # Original VGG-16 blocks.
         net = slim.repeat(inputs, 2, slim.conv2d, 64, [3, 3], scope='conv1')
         end_points['block1'] = net
@@ -473,32 +473,32 @@ def ssd_net(inputs,
         # Block 6: let's dilate the hell out of it!
         net = slim.conv2d(net, 1024, [3, 3], rate=6, scope='conv6')
         end_points['block6'] = net
-        net = tf.layers.dropout(net, rate=dropout_keep_prob, training=is_training)
+        net = tf.compat.v1.layers.dropout(net, rate=dropout_keep_prob, training=is_training)
         # Block 7: 1x1 conv. Because the fuck.
         net = slim.conv2d(net, 1024, [1, 1], scope='conv7')
         end_points['block7'] = net
-        net = tf.layers.dropout(net, rate=dropout_keep_prob, training=is_training)
+        net = tf.compat.v1.layers.dropout(net, rate=dropout_keep_prob, training=is_training)
 
         # Block 8/9/10/11: 1x1 and 3x3 convolutions stride 2 (except lasts).
         end_point = 'block8'
-        with tf.variable_scope(end_point):
+        with tf.compat.v1.variable_scope(end_point):
             net = slim.conv2d(net, 256, [1, 1], scope='conv1x1')
             net = custom_layers.pad2d(net, pad=(1, 1))
             net = slim.conv2d(net, 512, [3, 3], stride=2, scope='conv3x3', padding='VALID')
         end_points[end_point] = net
         end_point = 'block9'
-        with tf.variable_scope(end_point):
+        with tf.compat.v1.variable_scope(end_point):
             net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
             net = custom_layers.pad2d(net, pad=(1, 1))
             net = slim.conv2d(net, 256, [3, 3], stride=2, scope='conv3x3', padding='VALID')
         end_points[end_point] = net
         end_point = 'block10'
-        with tf.variable_scope(end_point):
+        with tf.compat.v1.variable_scope(end_point):
             net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
             net = slim.conv2d(net, 256, [3, 3], scope='conv3x3', padding='VALID')
         end_points[end_point] = net
         end_point = 'block11'
-        with tf.variable_scope(end_point):
+        with tf.compat.v1.variable_scope(end_point):
             net = slim.conv2d(net, 128, [1, 1], scope='conv1x1')
             net = slim.conv2d(net, 256, [3, 3], scope='conv3x3', padding='VALID')
         end_points[end_point] = net
@@ -508,7 +508,7 @@ def ssd_net(inputs,
         logits = []
         localisations = []
         for i, layer in enumerate(feat_layers):
-            with tf.variable_scope(layer + '_box'):
+            with tf.compat.v1.variable_scope(layer + '_box'):
                 p, l = ssd_multibox_layer(end_points[layer],
                                           num_classes,
                                           anchor_sizes[i],
@@ -533,9 +533,9 @@ def ssd_arg_scope(weight_decay=0.0005, data_format='NHWC'):
     """
     with slim.arg_scope([slim.conv2d, slim.fully_connected],
                         activation_fn=tf.nn.relu,
-                        weights_regularizer=slim.l2_regularizer(weight_decay),
-                        weights_initializer=tf.contrib.layers.xavier_initializer(),
-                        biases_initializer=tf.zeros_initializer()):
+                        weights_regularizer=tf.keras.regularizers.l2(0.5 * (weight_decay)),
+                        weights_initializer=tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"),
+                        biases_initializer=tf.compat.v1.zeros_initializer()):
         with slim.arg_scope([slim.conv2d, slim.max_pool2d],
                             padding='SAME',
                             data_format=data_format):
@@ -583,7 +583,7 @@ def ssd_losses(logits, localisations,
                label_smoothing=0.,
                device='/cpu:0',
                scope=None):
-    with tf.name_scope(scope, 'ssd_losses'):
+    with tf.compat.v1.name_scope(scope, 'ssd_losses'):
         lshape = tfe.get_shape(logits[0], 5)
         num_classes = lshape[-1]
         batch_size = lshape[0]
@@ -611,7 +611,7 @@ def ssd_losses(logits, localisations,
         # Compute positive matching mask...
         pmask = gscores > match_threshold
         fpmask = tf.cast(pmask, dtype)
-        n_positives = tf.reduce_sum(fpmask)
+        n_positives = tf.reduce_sum(input_tensor=fpmask)
 
         # Hard negative mining...
         no_classes = tf.cast(pmask, tf.int32)
@@ -619,12 +619,12 @@ def ssd_losses(logits, localisations,
         nmask = tf.logical_and(tf.logical_not(pmask),
                                gscores > -0.5)
         fnmask = tf.cast(nmask, dtype)
-        nvalues = tf.where(nmask,
+        nvalues = tf.compat.v1.where(nmask,
                            predictions[:, 0],
                            1. - fnmask)
         nvalues_flat = tf.reshape(nvalues, [-1])
         # Number of negative entries to select.
-        max_neg_entries = tf.cast(tf.reduce_sum(fnmask), tf.int32)
+        max_neg_entries = tf.cast(tf.reduce_sum(input_tensor=fnmask), tf.int32)
         n_neg = tf.cast(negative_ratio * n_positives, tf.int32) + batch_size
         n_neg = tf.minimum(n_neg, max_neg_entries)
 
@@ -635,25 +635,25 @@ def ssd_losses(logits, localisations,
         fnmask = tf.cast(nmask, dtype)
 
         # Add cross-entropy loss.
-        with tf.name_scope('cross_entropy_pos'):
+        with tf.compat.v1.name_scope('cross_entropy_pos'):
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,
                                                                   labels=gclasses)
-            loss = tf.div(tf.reduce_sum(loss * fpmask), batch_size, name='value')
-            tf.losses.add_loss(loss)
+            loss = tf.compat.v1.div(tf.reduce_sum(input_tensor=loss * fpmask), batch_size, name='value')
+            tf.compat.v1.losses.add_loss(loss)
 
-        with tf.name_scope('cross_entropy_neg'):
+        with tf.compat.v1.name_scope('cross_entropy_neg'):
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,
                                                                   labels=no_classes)
-            loss = tf.div(tf.reduce_sum(loss * fnmask), batch_size, name='value')
-            tf.losses.add_loss(loss)
+            loss = tf.compat.v1.div(tf.reduce_sum(input_tensor=loss * fnmask), batch_size, name='value')
+            tf.compat.v1.losses.add_loss(loss)
 
         # Add localization loss: smooth L1, L2, ...
-        with tf.name_scope('localization'):
+        with tf.compat.v1.name_scope('localization'):
             # Weights Tensor: positive mask + random negative.
             weights = tf.expand_dims(alpha * fpmask, axis=-1)
             loss = custom_layers.abs_smooth(localisations - glocalisations)
-            loss = tf.div(tf.reduce_sum(loss * weights), batch_size, name='value')
-            tf.losses.add_loss(loss)
+            loss = tf.compat.v1.div(tf.reduce_sum(input_tensor=loss * weights), batch_size, name='value')
+            tf.compat.v1.losses.add_loss(loss)
 
 
 def ssd_losses_old(logits, localisations,
@@ -677,13 +677,13 @@ def ssd_losses_old(logits, localisations,
       gscores: (list of) groundtruth score Tensors;
     """
     with tf.device(device):
-        with tf.name_scope(scope, 'ssd_losses'):
+        with tf.compat.v1.name_scope(scope, 'ssd_losses'):
             l_cross_pos = []
             l_cross_neg = []
             l_loc = []
             for i in range(len(logits)):
                 dtype = logits[i].dtype
-                with tf.name_scope('block_%i' % i):
+                with tf.compat.v1.name_scope('block_%i' % i):
                     # Sizing weight...
                     wsize = tfe.get_shape(logits[i], rank=5)
                     wsize = wsize[1] * wsize[2] * wsize[3]
@@ -691,7 +691,7 @@ def ssd_losses_old(logits, localisations,
                     # Positive mask.
                     pmask = gscores[i] > match_threshold
                     fpmask = tf.cast(pmask, dtype)
-                    n_positives = tf.reduce_sum(fpmask)
+                    n_positives = tf.reduce_sum(input_tensor=fpmask)
 
                     # Select some random negative entries.
                     # n_entries = np.prod(gclasses[i].get_shape().as_list())
@@ -704,15 +704,15 @@ def ssd_losses_old(logits, localisations,
                     nmask = tf.logical_and(tf.logical_not(pmask),
                                            gscores[i] > -0.5)
                     fnmask = tf.cast(nmask, dtype)
-                    nvalues = tf.where(nmask,
+                    nvalues = tf.compat.v1.where(nmask,
                                        predictions[:, :, :, :, 0],
                                        1. - fnmask)
                     nvalues_flat = tf.reshape(nvalues, [-1])
                     # Number of negative entries to select.
                     n_neg = tf.cast(negative_ratio * n_positives, tf.int32)
-                    n_neg = tf.maximum(n_neg, tf.size(nvalues_flat) // 8)
-                    n_neg = tf.maximum(n_neg, tf.shape(nvalues)[0] * 4)
-                    max_neg_entries = 1 + tf.cast(tf.reduce_sum(fnmask), tf.int32)
+                    n_neg = tf.maximum(n_neg, tf.size(input=nvalues_flat) // 8)
+                    n_neg = tf.maximum(n_neg, tf.shape(input=nvalues)[0] * 4)
+                    max_neg_entries = 1 + tf.cast(tf.reduce_sum(input_tensor=fnmask), tf.int32)
                     n_neg = tf.minimum(n_neg, max_neg_entries)
 
                     val, idxes = tf.nn.top_k(-nvalues_flat, k=n_neg)
@@ -722,37 +722,37 @@ def ssd_losses_old(logits, localisations,
                     fnmask = tf.cast(nmask, dtype)
 
                     # Add cross-entropy loss.
-                    with tf.name_scope('cross_entropy_pos'):
+                    with tf.compat.v1.name_scope('cross_entropy_pos'):
                         fpmask = wsize * fpmask
                         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits[i],
                                                                               labels=gclasses[i])
-                        loss = tf.losses.compute_weighted_loss(loss, fpmask)
+                        loss = tf.compat.v1.losses.compute_weighted_loss(loss, fpmask)
                         l_cross_pos.append(loss)
 
-                    with tf.name_scope('cross_entropy_neg'):
+                    with tf.compat.v1.name_scope('cross_entropy_neg'):
                         fnmask = wsize * fnmask
                         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits[i],
                                                                               labels=no_classes)
-                        loss = tf.losses.compute_weighted_loss(loss, fnmask)
+                        loss = tf.compat.v1.losses.compute_weighted_loss(loss, fnmask)
                         l_cross_neg.append(loss)
 
                     # Add localization loss: smooth L1, L2, ...
-                    with tf.name_scope('localization'):
+                    with tf.compat.v1.name_scope('localization'):
                         # Weights Tensor: positive mask + random negative.
                         weights = tf.expand_dims(alpha * fpmask, axis=-1)
                         loss = custom_layers.abs_smooth(localisations[i] - glocalisations[i])
-                        loss = tf.losses.compute_weighted_loss(loss, weights)
+                        loss = tf.compat.v1.losses.compute_weighted_loss(loss, weights)
                         l_loc.append(loss)
 
             # Additional total losses...
-            with tf.name_scope('total'):
+            with tf.compat.v1.name_scope('total'):
                 total_cross_pos = tf.add_n(l_cross_pos, 'cross_entropy_pos')
                 total_cross_neg = tf.add_n(l_cross_neg, 'cross_entropy_neg')
                 total_cross = tf.add(total_cross_pos, total_cross_neg, 'cross_entropy')
                 total_loc = tf.add_n(l_loc, 'localization')
 
                 # Add to EXTRA LOSSES TF.collection
-                tf.add_to_collection('EXTRA_LOSSES', total_cross_pos)
-                tf.add_to_collection('EXTRA_LOSSES', total_cross_neg)
-                tf.add_to_collection('EXTRA_LOSSES', total_cross)
-                tf.add_to_collection('EXTRA_LOSSES', total_loc)
+                tf.compat.v1.add_to_collection('EXTRA_LOSSES', total_cross_pos)
+                tf.compat.v1.add_to_collection('EXTRA_LOSSES', total_cross_neg)
+                tf.compat.v1.add_to_collection('EXTRA_LOSSES', total_cross)
+                tf.compat.v1.add_to_collection('EXTRA_LOSSES', total_loc)

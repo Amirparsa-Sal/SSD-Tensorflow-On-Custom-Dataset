@@ -65,7 +65,7 @@ def _safe_div(numerator, denominator, name):
     Returns:
       0 if `denominator` <= 0, else `numerator` / `denominator`
     """
-    return tf.where(
+    return tf.compat.v1.where(
         math_ops.greater(denominator, 0),
         math_ops.divide(numerator, denominator),
         tf.zeros_like(numerator),
@@ -116,7 +116,7 @@ def precision_recall(num_gbboxes, num_detections, tp, fp, scores,
         return d_precision, d_recall
 
     # Sort by score.
-    with tf.name_scope(scope, 'precision_recall',
+    with tf.compat.v1.name_scope(scope, 'precision_recall',
                        [num_gbboxes, num_detections, tp, fp, scores]):
         # Sort detections by score.
         scores, idxes = tf.nn.top_k(scores, k=num_detections, sorted=True)
@@ -127,7 +127,7 @@ def precision_recall(num_gbboxes, num_detections, tp, fp, scores,
         fp = tf.cumsum(tf.cast(fp, dtype), axis=0)
         recall = _safe_div(tp, tf.cast(num_gbboxes, dtype), 'recall')
         precision = _safe_div(tp, tp + fp, 'precision')
-        return tf.tuple([precision, recall])
+        return tf.tuple(tensors=[precision, recall])
 
 
 def streaming_tp_fp_arrays(num_gbboxes, tp, fp, scores,
@@ -170,9 +170,9 @@ def streaming_tp_fp_arrays(num_gbboxes, tp, fp, scores,
         if remove_zero_scores:
             rm_threshold = 1e-4
             mask = tf.logical_and(mask, tf.greater(scores, rm_threshold))
-            scores = tf.boolean_mask(scores, mask)
-            tp = tf.boolean_mask(tp, mask)
-            fp = tf.boolean_mask(fp, mask)
+            scores = tf.boolean_mask(tensor=scores, mask=mask)
+            tp = tf.boolean_mask(tensor=tp, mask=mask)
+            fp = tf.boolean_mask(tensor=fp, mask=mask)
 
         # Local variables accumlating information over batches.
         v_nobjects = _create_local('v_num_gbboxes', shape=[], dtype=tf.int64)
@@ -183,9 +183,9 @@ def streaming_tp_fp_arrays(num_gbboxes, tp, fp, scores,
 
         # Update operations.
         nobjects_op = state_ops.assign_add(v_nobjects,
-                                           tf.reduce_sum(num_gbboxes))
+                                           tf.reduce_sum(input_tensor=num_gbboxes))
         ndetections_op = state_ops.assign_add(v_ndetections,
-                                              tf.size(scores, out_type=tf.int32))
+                                              tf.size(input=scores, out_type=tf.int32))
         scores_op = state_ops.assign(v_scores, tf.concat([v_scores, scores], axis=0),
                                      validate_shape=False)
         tp_op = state_ops.assign(v_tp, tf.concat([v_tp, tp], axis=0),
@@ -215,7 +215,7 @@ def average_precision_voc12(precision, recall, name=None):
     The implementation follows Pascal 2012 and ILSVRC guidelines.
     See also: https://sanchom.wordpress.com/tag/average-precision/
     """
-    with tf.name_scope(name, 'average_precision_voc12', [precision, recall]):
+    with tf.compat.v1.name_scope(name, 'average_precision_voc12', [precision, recall]):
         # Convert to float64 to decrease error on Riemann sums.
         precision = tf.cast(precision, dtype=tf.float64)
         recall = tf.cast(recall, dtype=tf.float64)
@@ -230,7 +230,7 @@ def average_precision_voc12(precision, recall, name=None):
         # mean_pre = (precision[1:] + precision[:-1]) / 2.
         mean_pre = precision[1:]
         diff_rec = recall[1:] - recall[:-1]
-        ap = tf.reduce_sum(mean_pre * diff_rec)
+        ap = tf.reduce_sum(input_tensor=mean_pre * diff_rec)
         return ap
 
 
@@ -240,7 +240,7 @@ def average_precision_voc07(precision, recall, name=None):
     The implementation follows Pascal 2007 guidelines.
     See also: https://sanchom.wordpress.com/tag/average-precision/
     """
-    with tf.name_scope(name, 'average_precision_voc07', [precision, recall]):
+    with tf.compat.v1.name_scope(name, 'average_precision_voc07', [precision, recall]):
         # Convert to float64 to decrease error on cumulated sums.
         precision = tf.cast(precision, dtype=tf.float64)
         recall = tf.cast(recall, dtype=tf.float64)
@@ -252,7 +252,7 @@ def average_precision_voc07(precision, recall, name=None):
         l_aps = []
         for t in np.arange(0., 1.1, 0.1):
             mask = tf.greater_equal(recall, t)
-            v = tf.reduce_max(tf.boolean_mask(precision, mask))
+            v = tf.reduce_max(input_tensor=tf.boolean_mask(tensor=precision, mask=mask))
             l_aps.append(v / 11.)
         ap = tf.add_n(l_aps)
         return ap
@@ -278,9 +278,9 @@ def precision_recall_values(xvals, precision, recall, name=None):
         prec_values = []
         for x in xvals:
             mask = tf.less_equal(recall, x)
-            val = tf.reduce_min(tf.boolean_mask(precision, mask))
+            val = tf.reduce_min(input_tensor=tf.boolean_mask(tensor=precision, mask=mask))
             prec_values.append(val)
-        return tf.tuple(prec_values)
+        return tf.tuple(tensors=prec_values)
 
 
 # =========================================================================== #
@@ -291,7 +291,7 @@ def _precision_recall(n_gbboxes, n_detections, scores, tp, fp, scope=None):
     positives booleans arrays
     """
     # Sort by score.
-    with tf.name_scope(scope, 'prec_rec', [n_gbboxes, scores, tp, fp]):
+    with tf.compat.v1.name_scope(scope, 'prec_rec', [n_gbboxes, scores, tp, fp]):
         # Sort detections by score.
         scores, idxes = tf.nn.top_k(scores, k=n_detections, sorted=True)
         tp = tf.gather(tp, idxes)
@@ -303,7 +303,7 @@ def _precision_recall(n_gbboxes, n_detections, scores, tp, fp, scope=None):
         recall = _safe_div(tp, tf.cast(n_gbboxes, dtype), 'recall')
         precision = _safe_div(tp, tp + fp, 'precision')
 
-        return tf.tuple([precision, recall])
+        return tf.tuple(tensors=[precision, recall])
 
 
 def streaming_precision_recall_arrays(n_gbboxes, rclasses, rscores,
@@ -332,10 +332,10 @@ def streaming_precision_recall_arrays(n_gbboxes, rclasses, rscores,
         fp_tensor = tf.reshape(fp_tensor, [-1])
         if remove_zero_labels:
             mask = tf.greater(rclasses, 0)
-            rclasses = tf.boolean_mask(rclasses, mask)
-            rscores = tf.boolean_mask(rscores, mask)
-            tp_tensor = tf.boolean_mask(tp_tensor, mask)
-            fp_tensor = tf.boolean_mask(fp_tensor, mask)
+            rclasses = tf.boolean_mask(tensor=rclasses, mask=mask)
+            rscores = tf.boolean_mask(tensor=rscores, mask=mask)
+            tp_tensor = tf.boolean_mask(tensor=tp_tensor, mask=mask)
+            fp_tensor = tf.boolean_mask(tensor=fp_tensor, mask=mask)
 
         # Local variables accumlating information over batches.
         v_nobjects = _create_local('v_nobjects', shape=[], dtype=tf.int64)
@@ -346,9 +346,9 @@ def streaming_precision_recall_arrays(n_gbboxes, rclasses, rscores,
 
         # Update operations.
         nobjects_op = state_ops.assign_add(v_nobjects,
-                                           tf.reduce_sum(n_gbboxes))
+                                           tf.reduce_sum(input_tensor=n_gbboxes))
         ndetections_op = state_ops.assign_add(v_ndetections,
-                                              tf.size(rscores, out_type=tf.int32))
+                                              tf.size(input=rscores, out_type=tf.int32))
         scores_op = state_ops.assign(v_scores, tf.concat([v_scores, rscores], axis=0),
                                      validate_shape=False)
         tp_op = state_ops.assign(v_tp, tf.concat([v_tp, tp_tensor], axis=0),

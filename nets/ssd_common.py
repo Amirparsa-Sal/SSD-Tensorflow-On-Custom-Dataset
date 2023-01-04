@@ -74,7 +74,7 @@ def tf_ssd_bboxes_encode_layer(labels,
         inter_vol = h * w
         union_vol = vol_anchors - inter_vol \
             + (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-        jaccard = tf.div(inter_vol, union_vol)
+        jaccard = tf.compat.v1.div(inter_vol, union_vol)
         return jaccard
 
     def intersection_with_anchors(bbox):
@@ -87,14 +87,14 @@ def tf_ssd_bboxes_encode_layer(labels,
         h = tf.maximum(int_ymax - int_ymin, 0.)
         w = tf.maximum(int_xmax - int_xmin, 0.)
         inter_vol = h * w
-        scores = tf.div(inter_vol, vol_anchors)
+        scores = tf.compat.v1.div(inter_vol, vol_anchors)
         return scores
 
     def condition(i, feat_labels, feat_scores,
                   feat_ymin, feat_xmin, feat_ymax, feat_xmax):
         """Condition: check label index.
         """
-        r = tf.less(i, tf.shape(labels))
+        r = tf.less(i, tf.shape(input=labels))
         return r[0]
 
     def body(i, feat_labels, feat_scores,
@@ -117,7 +117,7 @@ def tf_ssd_bboxes_encode_layer(labels,
         fmask = tf.cast(mask, dtype)
         # Update values using mask.
         feat_labels = imask * label + (1 - imask) * feat_labels
-        feat_scores = tf.where(mask, jaccard, feat_scores)
+        feat_scores = tf.compat.v1.where(mask, jaccard, feat_scores)
 
         feat_ymin = fmask * bbox[0] + (1 - fmask) * feat_ymin
         feat_xmin = fmask * bbox[1] + (1 - fmask) * feat_xmin
@@ -137,8 +137,8 @@ def tf_ssd_bboxes_encode_layer(labels,
     i = 0
     [i, feat_labels, feat_scores,
      feat_ymin, feat_xmin,
-     feat_ymax, feat_xmax] = tf.while_loop(condition, body,
-                                           [i, feat_labels, feat_scores,
+     feat_ymax, feat_xmax] = tf.while_loop(cond=condition, body=body,
+                                           loop_vars=[i, feat_labels, feat_scores,
                                             feat_ymin, feat_xmin,
                                             feat_ymax, feat_xmax])
     # Transform to center / size.
@@ -149,8 +149,8 @@ def tf_ssd_bboxes_encode_layer(labels,
     # Encode features.
     feat_cy = (feat_cy - yref) / href / prior_scaling[0]
     feat_cx = (feat_cx - xref) / wref / prior_scaling[1]
-    feat_h = tf.log(feat_h / href) / prior_scaling[2]
-    feat_w = tf.log(feat_w / wref) / prior_scaling[3]
+    feat_h = tf.math.log(feat_h / href) / prior_scaling[2]
+    feat_w = tf.math.log(feat_w / wref) / prior_scaling[3]
     # Use SSD ordering: x / y / w / h instead of ours.
     feat_localizations = tf.stack([feat_cx, feat_cy, feat_w, feat_h], axis=-1)
     return feat_labels, feat_localizations, feat_scores
@@ -179,12 +179,12 @@ def tf_ssd_bboxes_encode(labels,
       (target_labels, target_localizations, target_scores):
         Each element is a list of target Tensors.
     """
-    with tf.name_scope(scope):
+    with tf.compat.v1.name_scope(scope):
         target_labels = []
         target_localizations = []
         target_scores = []
         for i, anchors_layer in enumerate(anchors):
-            with tf.name_scope('bboxes_encode_block_%i' % i):
+            with tf.compat.v1.name_scope('bboxes_encode_block_%i' % i):
                 t_labels, t_loc, t_scores = \
                     tf_ssd_bboxes_encode_layer(labels, bboxes, anchors_layer,
                                                num_classes, no_annotation_label,
@@ -239,7 +239,7 @@ def tf_ssd_bboxes_decode(feat_localizations,
     Return:
       List of Tensors Nx4: ymin, xmin, ymax, xmax
     """
-    with tf.name_scope(scope):
+    with tf.compat.v1.name_scope(scope):
         bboxes = []
         for i, anchors_layer in enumerate(anchors):
             bboxes.append(
@@ -270,7 +270,7 @@ def tf_ssd_bboxes_select_layer(predictions_layer, localizations_layer,
         size Batches X N x 1 | 4. Each key corresponding to a class.
     """
     select_threshold = 0.0 if select_threshold is None else select_threshold
-    with tf.name_scope(scope, 'ssd_bboxes_select_layer',
+    with tf.compat.v1.name_scope(scope, 'ssd_bboxes_select_layer',
                        [predictions_layer, localizations_layer]):
         # Reshape features: Batches x N x N_labels | 4
         p_shape = tfe.get_shape(predictions_layer)
@@ -313,7 +313,7 @@ def tf_ssd_bboxes_select(predictions_net, localizations_net,
       d_scores, d_bboxes: Dictionary of scores and bboxes Tensors of
         size Batches X N x 1 | 4. Each key corresponding to a class.
     """
-    with tf.name_scope(scope, 'ssd_bboxes_select',
+    with tf.compat.v1.name_scope(scope, 'ssd_bboxes_select',
                        [predictions_net, localizations_net]):
         l_scores = []
         l_bboxes = []
@@ -359,13 +359,13 @@ def tf_ssd_bboxes_select_layer_all_classes(predictions_layer, localizations_laye
     # Boxes selection: use threshold or score > no-label criteria.
     if select_threshold is None or select_threshold == 0:
         # Class prediction and scores: assign 0. to 0-class
-        classes = tf.argmax(predictions_layer, axis=2)
-        scores = tf.reduce_max(predictions_layer, axis=2)
+        classes = tf.argmax(input=predictions_layer, axis=2)
+        scores = tf.reduce_max(input_tensor=predictions_layer, axis=2)
         scores = scores * tf.cast(classes > 0, scores.dtype)
     else:
         sub_predictions = predictions_layer[:, :, 1:]
-        classes = tf.argmax(sub_predictions, axis=2) + 1
-        scores = tf.reduce_max(sub_predictions, axis=2)
+        classes = tf.argmax(input=sub_predictions, axis=2) + 1
+        scores = tf.reduce_max(input_tensor=sub_predictions, axis=2)
         # Only keep predictions higher than threshold.
         mask = tf.greater(scores, select_threshold)
         classes = classes * tf.cast(mask, classes.dtype)
@@ -389,7 +389,7 @@ def tf_ssd_bboxes_select_all_classes(predictions_net, localizations_net,
     Return:
       classes, scores, bboxes: Tensors.
     """
-    with tf.name_scope(scope, 'ssd_bboxes_select',
+    with tf.compat.v1.name_scope(scope, 'ssd_bboxes_select',
                        [predictions_net, localizations_net]):
         l_classes = []
         l_scores = []

@@ -48,7 +48,7 @@ def bytes_feature(value):
 def _process_image(directory, name):
     # Read the image file.
     filename = directory + DIRECTORY_IMAGES + name + '.png'
-    image_data = tf.gfile.FastGFile(filename, 'rb').read()
+    image_data = tf.compat.v1.gfile.FastGFile(filename, 'rb').read()
 
     # Read the XML annotation file.
     filename = os.path.join(directory, DIRECTORY_ANNOTATIONS, name + '.xml')
@@ -149,8 +149,8 @@ def _get_output_filename(output_dir, name, idx):
 
 
 def run(dataset_dir, output_dir, name='voc_train', shuffling=False):
-    if not tf.gfile.Exists(dataset_dir):
-        tf.gfile.MakeDirs(dataset_dir)
+    if not tf.io.gfile.exists(dataset_dir):
+        tf.io.gfile.makedirs(dataset_dir)
 
     path = os.path.join(dataset_dir, DIRECTORY_ANNOTATIONS)
     filenames = sorted (os.listdir (path)) #(sort)
@@ -163,7 +163,7 @@ def run(dataset_dir, output_dir, name='voc_train', shuffling=False):
     while i < len(filenames):
         # Open new TFRecord file.
         tf_filename = _get_output_filename(output_dir, name, fidx)
-        with tf.python_io.TFRecordWriter(tf_filename) as tfrecord_writer:
+        with tf.io.TFRecordWriter(tf_filename) as tfrecord_writer:
             j = 0
             while i < len(filenames) and j < SAMPLES_PER_FILES:
                 sys.stdout.write ('converting image%d /% d \ n '% (i + 1, len (filenames))) #(terminal printing, similar to print)
@@ -191,4 +191,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-    tf.app.run()
+    tf.compat.v1.app.run()

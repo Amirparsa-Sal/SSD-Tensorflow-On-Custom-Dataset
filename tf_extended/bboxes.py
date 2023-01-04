@@ -37,7 +37,7 @@ def bboxes_sort_all_classes(classes, scores, bboxes, top_k=400, scope=None):
     Return:
       classes, scores, bboxes: Sorted tensors of shape Batch x Top_k.
     """
-    with tf.name_scope(scope, 'bboxes_sort', [classes, scores, bboxes]):
+    with tf.compat.v1.name_scope(scope, 'bboxes_sort', [classes, scores, bboxes]):
         scores, idxes = tf.nn.top_k(scores, k=top_k, sorted=True)
 
         # Trick to be able to use tf.gather: map for each element in the batch.
@@ -71,7 +71,7 @@ def bboxes_sort(scores, bboxes, top_k=400, scope=None):
     """
     # Dictionaries as inputs.
     if isinstance(scores, dict) or isinstance(bboxes, dict):
-        with tf.name_scope(scope, 'bboxes_sort_dict'):
+        with tf.compat.v1.name_scope(scope, 'bboxes_sort_dict'):
             d_scores = {}
             d_bboxes = {}
             for c in scores.keys():
@@ -81,7 +81,7 @@ def bboxes_sort(scores, bboxes, top_k=400, scope=None):
             return d_scores, d_bboxes
 
     # Tensors inputs.
-    with tf.name_scope(scope, 'bboxes_sort', [scores, bboxes]):
+    with tf.compat.v1.name_scope(scope, 'bboxes_sort', [scores, bboxes]):
         # Sort scores...
         scores, idxes = tf.nn.top_k(scores, k=top_k, sorted=True)
 
@@ -113,17 +113,17 @@ def bboxes_clip(bbox_ref, bboxes, scope=None):
     """
     # Bboxes is dictionary.
     if isinstance(bboxes, dict):
-        with tf.name_scope(scope, 'bboxes_clip_dict'):
+        with tf.compat.v1.name_scope(scope, 'bboxes_clip_dict'):
             d_bboxes = {}
             for c in bboxes.keys():
                 d_bboxes[c] = bboxes_clip(bbox_ref, bboxes[c])
             return d_bboxes
 
     # Tensors inputs.
-    with tf.name_scope(scope, 'bboxes_clip'):
+    with tf.compat.v1.name_scope(scope, 'bboxes_clip'):
         # Easier with transposed bboxes. Especially for broadcasting.
-        bbox_ref = tf.transpose(bbox_ref)
-        bboxes = tf.transpose(bboxes)
+        bbox_ref = tf.transpose(a=bbox_ref)
+        bboxes = tf.transpose(a=bboxes)
         # Intersection bboxes and reference bbox.
         ymin = tf.maximum(bboxes[0], bbox_ref[0])
         xmin = tf.maximum(bboxes[1], bbox_ref[1])
@@ -132,7 +132,7 @@ def bboxes_clip(bbox_ref, bboxes, scope=None):
         # Double check! Empty boxes when no-intersection.
         ymin = tf.minimum(ymin, ymax)
         xmin = tf.minimum(xmin, xmax)
-        bboxes = tf.transpose(tf.stack([ymin, xmin, ymax, xmax], axis=0))
+        bboxes = tf.transpose(a=tf.stack([ymin, xmin, ymax, xmax], axis=0))
         return bboxes
 
 
@@ -143,14 +143,14 @@ def bboxes_resize(bbox_ref, bboxes, name=None):
     """
     # Bboxes is dictionary.
     if isinstance(bboxes, dict):
-        with tf.name_scope(name, 'bboxes_resize_dict'):
+        with tf.compat.v1.name_scope(name, 'bboxes_resize_dict'):
             d_bboxes = {}
             for c in bboxes.keys():
                 d_bboxes[c] = bboxes_resize(bbox_ref, bboxes[c])
             return d_bboxes
 
     # Tensors inputs.
-    with tf.name_scope(name, 'bboxes_resize'):
+    with tf.compat.v1.name_scope(name, 'bboxes_resize'):
         # Translate.
         v = tf.stack([bbox_ref[0], bbox_ref[1], bbox_ref[0], bbox_ref[1]])
         bboxes = bboxes - v
@@ -177,7 +177,7 @@ def bboxes_nms(scores, bboxes, nms_threshold=0.5, keep_top_k=200, scope=None):
       classes, scores, bboxes Tensors, sorted by score.
         Padded with zero if necessary.
     """
-    with tf.name_scope(scope, 'bboxes_nms_single', [scores, bboxes]):
+    with tf.compat.v1.name_scope(scope, 'bboxes_nms_single', [scores, bboxes]):
         # Apply NMS algorithm.
         idxes = tf.image.non_max_suppression(bboxes, scores,
                                              keep_top_k, nms_threshold)
@@ -207,7 +207,7 @@ def bboxes_nms_batch(scores, bboxes, nms_threshold=0.5, keep_top_k=200,
     """
     # Dictionaries as inputs.
     if isinstance(scores, dict) or isinstance(bboxes, dict):
-        with tf.name_scope(scope, 'bboxes_nms_batch_dict'):
+        with tf.compat.v1.name_scope(scope, 'bboxes_nms_batch_dict'):
             d_scores = {}
             d_bboxes = {}
             for c in scores.keys():
@@ -219,7 +219,7 @@ def bboxes_nms_batch(scores, bboxes, nms_threshold=0.5, keep_top_k=200,
             return d_scores, d_bboxes
 
     # Tensors inputs.
-    with tf.name_scope(scope, 'bboxes_nms_batch'):
+    with tf.compat.v1.name_scope(scope, 'bboxes_nms_batch'):
         r = tf.map_fn(lambda x: bboxes_nms(x[0], x[1],
                                            nms_threshold, keep_top_k),
                       (scores, bboxes),
@@ -264,18 +264,18 @@ def bboxes_matching(label, scores, bboxes,
        tp_match: (N,)-shaped boolean Tensor containing with True Positives.
        fp_match: (N,)-shaped boolean Tensor containing with False Positives.
     """
-    with tf.name_scope(scope, 'bboxes_matching_single',
+    with tf.compat.v1.name_scope(scope, 'bboxes_matching_single',
                        [scores, bboxes, glabels, gbboxes]):
-        rsize = tf.size(scores)
-        rshape = tf.shape(scores)
+        rsize = tf.size(input=scores)
+        rshape = tf.shape(input=scores)
         rlabel = tf.cast(label, glabels.dtype)
         # Number of groundtruth boxes.
         gdifficults = tf.cast(gdifficults, tf.bool)
-        n_gbboxes = tf.count_nonzero(tf.logical_and(tf.equal(glabels, label),
+        n_gbboxes = tf.math.count_nonzero(tf.logical_and(tf.equal(glabels, label),
                                                     tf.logical_not(gdifficults)))
         # Grountruth matching arrays.
-        gmatch = tf.zeros(tf.shape(glabels), dtype=tf.bool)
-        grange = tf.range(tf.size(glabels), dtype=tf.int32)
+        gmatch = tf.zeros(tf.shape(input=glabels), dtype=tf.bool)
+        grange = tf.range(tf.size(input=glabels), dtype=tf.int32)
         # True/False positive matching TensorArrays.
         sdtype = tf.bool
         ta_tp_bool = tf.TensorArray(sdtype, size=rsize, dynamic_size=False, infer_shape=True)
@@ -293,7 +293,7 @@ def bboxes_matching(label, scores, bboxes,
             jaccard = jaccard * tf.cast(tf.equal(glabels, rlabel), dtype=jaccard.dtype)
 
             # Best fit, checking it's above threshold.
-            idxmax = tf.cast(tf.argmax(jaccard, axis=0), tf.int32)
+            idxmax = tf.cast(tf.argmax(input=jaccard, axis=0), tf.int32)
             jcdmax = jaccard[idxmax]
             match = jcdmax > matching_threshold
             existing_match = gmatch[idxmax]
@@ -316,8 +316,8 @@ def bboxes_matching(label, scores, bboxes,
         # Main loop definition.
         i = 0
         [i, ta_tp_bool, ta_fp_bool, gmatch] = \
-            tf.while_loop(m_condition, m_body,
-                          [i, ta_tp_bool, ta_fp_bool, gmatch],
+            tf.while_loop(cond=m_condition, body=m_body,
+                          loop_vars=[i, ta_tp_bool, ta_fp_bool, gmatch],
                           parallel_iterations=1,
                           back_prop=False)
         # TensorArrays to Tensors and reshape.
@@ -353,7 +353,7 @@ def bboxes_matching_batch(labels, scores, bboxes,
     """
     # Dictionaries as inputs.
     if isinstance(scores, dict) or isinstance(bboxes, dict):
-        with tf.name_scope(scope, 'bboxes_matching_batch_dict'):
+        with tf.compat.v1.name_scope(scope, 'bboxes_matching_batch_dict'):
             d_n_gbboxes = {}
             d_tp = {}
             d_fp = {}
@@ -366,7 +366,7 @@ def bboxes_matching_batch(labels, scores, bboxes,
                 d_fp[c] = fp
             return d_n_gbboxes, d_tp, d_fp, scores
 
-    with tf.name_scope(scope, 'bboxes_matching_batch',
+    with tf.compat.v1.name_scope(scope, 'bboxes_matching_batch',
                        [scores, bboxes, glabels, gbboxes]):
         r = tf.map_fn(lambda x: bboxes_matching(labels, x[0], x[1],
                                                 x[2], x[3], x[4],
@@ -392,7 +392,7 @@ def bboxes_filter_center(labels, bboxes, margins=[0., 0., 0., 0.],
     Return:
       labels, bboxes: Filtered elements.
     """
-    with tf.name_scope(scope, 'bboxes_filter', [labels, bboxes]):
+    with tf.compat.v1.name_scope(scope, 'bboxes_filter', [labels, bboxes]):
         cy = (bboxes[:, 0] + bboxes[:, 2]) / 2.
         cx = (bboxes[:, 1] + bboxes[:, 3]) / 2.
         mask = tf.greater(cy, margins[0])
@@ -400,8 +400,8 @@ def bboxes_filter_center(labels, bboxes, margins=[0., 0., 0., 0.],
         mask = tf.logical_and(mask, tf.less(cx, 1. + margins[2]))
         mask = tf.logical_and(mask, tf.less(cx, 1. + margins[3]))
         # Boolean masking...
-        labels = tf.boolean_mask(labels, mask)
-        bboxes = tf.boolean_mask(bboxes, mask)
+        labels = tf.boolean_mask(tensor=labels, mask=mask)
+        bboxes = tf.boolean_mask(tensor=bboxes, mask=mask)
         return labels, bboxes
 
 
@@ -415,16 +415,16 @@ def bboxes_filter_overlap(labels, bboxes,
     Return:
       labels, bboxes: Filtered (or newly assigned) elements.
     """
-    with tf.name_scope(scope, 'bboxes_filter', [labels, bboxes]):
+    with tf.compat.v1.name_scope(scope, 'bboxes_filter', [labels, bboxes]):
         scores = bboxes_intersection(tf.constant([0, 0, 1, 1], bboxes.dtype),
                                      bboxes)
         mask = scores > threshold
         if assign_negative:
-            labels = tf.where(mask, labels, -labels)
+            labels = tf.compat.v1.where(mask, labels, -labels)
             # bboxes = tf.where(mask, bboxes, bboxes)
         else:
-            labels = tf.boolean_mask(labels, mask)
-            bboxes = tf.boolean_mask(bboxes, mask)
+            labels = tf.boolean_mask(tensor=labels, mask=mask)
+            bboxes = tf.boolean_mask(tensor=bboxes, mask=mask)
         return labels, bboxes
 
 
@@ -437,12 +437,12 @@ def bboxes_filter_labels(labels, bboxes,
     Return:
       labels, bboxes: Filtered elements.
     """
-    with tf.name_scope(scope, 'bboxes_filter_labels', [labels, bboxes]):
+    with tf.compat.v1.name_scope(scope, 'bboxes_filter_labels', [labels, bboxes]):
         mask = tf.greater_equal(labels, num_classes)
         for l in labels:
             mask = tf.logical_and(mask, tf.not_equal(labels, l))
-        labels = tf.boolean_mask(labels, mask)
-        bboxes = tf.boolean_mask(bboxes, mask)
+        labels = tf.boolean_mask(tensor=labels, mask=mask)
+        bboxes = tf.boolean_mask(tensor=bboxes, mask=mask)
         return labels, bboxes
 
 
@@ -459,10 +459,10 @@ def bboxes_jaccard(bbox_ref, bboxes, name=None):
     Return:
       (N,) Tensor with Jaccard scores.
     """
-    with tf.name_scope(name, 'bboxes_jaccard'):
+    with tf.compat.v1.name_scope(name, 'bboxes_jaccard'):
         # Should be more efficient to first transpose.
-        bboxes = tf.transpose(bboxes)
-        bbox_ref = tf.transpose(bbox_ref)
+        bboxes = tf.transpose(a=bboxes)
+        bbox_ref = tf.transpose(a=bbox_ref)
         # Intersection bbox and volume.
         int_ymin = tf.maximum(bboxes[0], bbox_ref[0])
         int_xmin = tf.maximum(bboxes[1], bbox_ref[1])
@@ -490,10 +490,10 @@ def bboxes_intersection(bbox_ref, bboxes, name=None):
     Return:
       (N,) Tensor with relative intersection.
     """
-    with tf.name_scope(name, 'bboxes_intersection'):
+    with tf.compat.v1.name_scope(name, 'bboxes_intersection'):
         # Should be more efficient to first transpose.
-        bboxes = tf.transpose(bboxes)
-        bbox_ref = tf.transpose(bbox_ref)
+        bboxes = tf.transpose(a=bboxes)
+        bbox_ref = tf.transpose(a=bbox_ref)
         # Intersection bbox and volume.
         int_ymin = tf.maximum(bboxes[0], bbox_ref[0])
         int_xmin = tf.maximum(bboxes[1], bbox_ref[1])

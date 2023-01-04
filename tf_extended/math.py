@@ -31,7 +31,7 @@ def safe_divide(numerator, denominator, name):
     Returns:
       0 if `denominator` <= 0, else `numerator` / `denominator`
     """
-    return tf.where(
+    return tf.compat.v1.where(
         math_ops.greater(denominator, 0),
         math_ops.divide(numerator, denominator),
         tf.zeros_like(numerator),

@@ -98,7 +98,7 @@ def tf_summary_image(image, bboxes, name='image', unwhitened=False):
     image = tf.expand_dims(image, 0)
     bboxes = tf.expand_dims(bboxes, 0)
     image_with_box = tf.image.draw_bounding_boxes(image, bboxes)
-    tf.summary.image(name, image_with_box)
+    tf.compat.v1.summary.image(name, image_with_box)
 
 
 def apply_with_random_selector(x, func, num_cases):
@@ -113,7 +113,7 @@ def apply_with_random_selector(x, func, num_cases):
         The result of func(x, sel), where func receives the value of the
         selector as a python integer, but sel is sampled dynamically.
     """
-    sel = tf.random_uniform([], maxval=num_cases, dtype=tf.int32)
+    sel = tf.random.uniform([], maxval=num_cases, dtype=tf.int32)
     # Pass the real x only to one of the func calls.
     return control_flow_ops.merge([
             func(control_flow_ops.switch(x, tf.equal(sel, case))[1], case)
@@ -138,7 +138,7 @@ def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
     Raises:
         ValueError: if color_ordering not in [0, 3]
     """
-    with tf.name_scope(scope, 'distort_color', [image]):
+    with tf.compat.v1.name_scope(scope, 'distort_color', [image]):
         if fast_mode:
             if color_ordering == 0:
                 image = tf.image.random_brightness(image, max_delta=32. / 255.)
@@ -206,11 +206,11 @@ def distorted_bounding_box_crop(image,
     Returns:
         A tuple, a 3-D Tensor cropped_image and the distorted bbox
     """
-    with tf.name_scope(scope, 'distorted_bounding_box_crop', [image, bboxes]):
+    with tf.compat.v1.name_scope(scope, 'distorted_bounding_box_crop', [image, bboxes]):
         # Each bounding box has shape [1, num_boxes, box coords] and
         # the coordinates are ordered [ymin, xmin, ymax, xmax].
         bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
-                tf.shape(image),
+                image_size=tf.shape(input=image),
                 bounding_boxes=tf.expand_dims(bboxes, 0),
                 min_object_covered=min_object_covered,
                 aspect_ratio_range=aspect_ratio_range,
@@ -253,7 +253,7 @@ def preprocess_for_train(image, labels, bboxes,
         A preprocessed image.
     """
     fast_mode = False
-    with tf.name_scope(scope, 'ssd_preprocessing_train', [image, labels, bboxes]):
+    with tf.compat.v1.name_scope(scope, 'ssd_preprocessing_train', [image, labels, bboxes]):
         if image.get_shape().ndims != 3:
             raise ValueError('Input must be of size [height, width, C>0]')
         # Convert to float scaled [0, 1].
@@ -293,7 +293,7 @@ def preprocess_for_train(image, labels, bboxes,
         image = tf_image_whitened(image, [_R_MEAN, _G_MEAN, _B_MEAN])
         # Image data format.
         if data_format == 'NCHW':
-            image = tf.transpose(image, perm=(2, 0, 1))
+            image = tf.transpose(a=image, perm=(2, 0, 1))
         return image, labels, bboxes
 
 
@@ -311,11 +311,11 @@ def preprocess_for_eval(image, labels, bboxes,
     Returns:
         A preprocessed image.
     """
-    with tf.name_scope(scope):
+    with tf.compat.v1.name_scope(scope):
         if image.get_shape().ndims != 3:
             raise ValueError('Input must be of size [height, width, C>0]')
 
-        image = tf.to_float(image)
+        image = tf.cast(image, dtype=tf.float32)
         image = tf_image_whitened(image, [_R_MEAN, _G_MEAN, _B_MEAN])
 
         # Add image rectangle to bboxes.
@@ -334,11 +334,11 @@ def preprocess_for_eval(image, labels, bboxes,
                 image, bboxes, out_shape[0], out_shape[1])
         elif resize == Resize.PAD_AND_RESIZE:
             # Resize image first: find the correct factor...
-            shape = tf.shape(image)
-            factor = tf.minimum(tf.to_double(1.0),
-                                tf.minimum(tf.to_double(out_shape[0] / shape[0]),
-                                           tf.to_double(out_shape[1] / shape[1])))
-            resize_shape = factor * tf.to_double(shape[0:2])
+            shape = tf.shape(input=image)
+            factor = tf.minimum(tf.cast(1.0, dtype=tf.float64),
+                                tf.minimum(tf.cast(out_shape[0] / shape[0], dtype=tf.float64),
+                                           tf.cast(out_shape[1] / shape[1], dtype=tf.float64)))
+            resize_shape = factor * tf.cast(shape[0:2], dtype=tf.float64)
             resize_shape = tf.cast(tf.floor(resize_shape), tf.int32)
 
             image = tf_image.resize_image(image, resize_shape,
@@ -359,11 +359,11 @@ def preprocess_for_eval(image, labels, bboxes,
         # Remove difficult boxes.
         if difficults is not None:
             mask = tf.logical_not(tf.cast(difficults, tf.bool))
-            labels = tf.boolean_mask(labels, mask)
-            bboxes = tf.boolean_mask(bboxes, mask)
+            labels = tf.boolean_mask(tensor=labels, mask=mask)
+            bboxes = tf.boolean_mask(tensor=bboxes, mask=mask)
         # Image data format.
         if data_format == 'NCHW':
-            image = tf.transpose(image, perm=(2, 0, 1))
+            image = tf.transpose(a=image, perm=(2, 0, 1))
         return image, labels, bboxes, bbox_img
 
 

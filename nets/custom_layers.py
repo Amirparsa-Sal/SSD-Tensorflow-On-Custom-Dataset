@@ -133,13 +133,13 @@ def pad2d(inputs,
       mode: Padding mode. C.f. `tf.pad`
       data_format:  NHWC or NCHW data format.
     """
-    with tf.name_scope(scope, 'pad2d', [inputs]):
+    with tf.compat.v1.name_scope(scope, 'pad2d', [inputs]):
         # Padding shape.
         if data_format == 'NHWC':
             paddings = [[0, 0], [pad[0], pad[0]], [pad[1], pad[1]], [0, 0]]
         elif data_format == 'NCHW':
             paddings = [[0, 0], [0, 0], [pad[0], pad[0]], [pad[1], pad[1]]]
-        net = tf.pad(inputs, paddings, mode=mode)
+        net = tf.pad(tensor=inputs, paddings=paddings, mode=mode)
         return net
 
 
@@ -156,9 +156,9 @@ def channel_to_last(inputs,
     Return:
       Input in NHWC format.
     """
-    with tf.name_scope(scope, 'channel_to_last', [inputs]):
+    with tf.compat.v1.name_scope(scope, 'channel_to_last', [inputs]):
         if data_format == 'NHWC':
             net = inputs
         elif data_format == 'NCHW':
-            net = tf.transpose(inputs, perm=(0, 2, 3, 1))
+            net = tf.transpose(a=inputs, perm=(0, 2, 3, 1))
         return net

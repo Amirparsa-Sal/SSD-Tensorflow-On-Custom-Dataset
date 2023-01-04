@@ -102,7 +102,7 @@ def configure_learning_rate(flags, num_samples_per_epoch, global_step):
                       flags.num_epochs_per_decay)
 
     if flags.learning_rate_decay_type == 'exponential':
-        return tf.train.exponential_decay(flags.learning_rate,
+        return tf.compat.v1.train.exponential_decay(flags.learning_rate,
                                           global_step,
                                           decay_steps,
                                           flags.learning_rate_decay_factor,
@@ -111,7 +111,7 @@ def configure_learning_rate(flags, num_samples_per_epoch, global_step):
     elif flags.learning_rate_decay_type == 'fixed':
         return tf.constant(flags.learning_rate, name='fixed_learning_rate')
     elif flags.learning_rate_decay_type == 'polynomial':
-        return tf.train.polynomial_decay(flags.learning_rate,
+        return tf.compat.v1.train.polynomial_decay(flags.learning_rate,
                                          global_step,
                                          decay_steps,
                                          flags.end_learning_rate,
@@ -132,40 +132,40 @@ def configure_optimizer(flags, learning_rate):
       An instance of an optimizer.
     """
     if flags.optimizer == 'adadelta':
-        optimizer = tf.train.AdadeltaOptimizer(
+        optimizer = tf.compat.v1.train.AdadeltaOptimizer(
             learning_rate,
             rho=flags.adadelta_rho,
             epsilon=flags.opt_epsilon)
     elif flags.optimizer == 'adagrad':
-        optimizer = tf.train.AdagradOptimizer(
+        optimizer = tf.compat.v1.train.AdagradOptimizer(
             learning_rate,
             initial_accumulator_value=flags.adagrad_initial_accumulator_value)
     elif flags.optimizer == 'adam':
-        optimizer = tf.train.AdamOptimizer(
+        optimizer = tf.compat.v1.train.AdamOptimizer(
             learning_rate,
             beta1=flags.adam_beta1,
             beta2=flags.adam_beta2,
             epsilon=flags.opt_epsilon)
     elif flags.optimizer == 'ftrl':
-        optimizer = tf.train.FtrlOptimizer(
+        optimizer = tf.compat.v1.train.FtrlOptimizer(
             learning_rate,
             learning_rate_power=flags.ftrl_learning_rate_power,
             initial_accumulator_value=flags.ftrl_initial_accumulator_value,
             l1_regularization_strength=flags.ftrl_l1,
             l2_regularization_strength=flags.ftrl_l2)
     elif flags.optimizer == 'momentum':
-        optimizer = tf.train.MomentumOptimizer(
+        optimizer = tf.compat.v1.train.MomentumOptimizer(
             learning_rate,
             momentum=flags.momentum,
             name='Momentum')
     elif flags.optimizer == 'rmsprop':
-        optimizer = tf.train.RMSPropOptimizer(
+        optimizer = tf.compat.v1.train.RMSPropOptimizer(
             learning_rate,
             decay=flags.rmsprop_decay,
             momentum=flags.rmsprop_momentum,
             epsilon=flags.opt_epsilon)
     elif flags.optimizer == 'sgd':
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+        optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate)
     else:
         raise ValueError('Optimizer [%s] was not recognized', flags.optimizer)
     return optimizer
@@ -174,8 +174,8 @@ def configure_optimizer(flags, learning_rate):
 def add_variables_summaries(learning_rate):
     summaries = []
     for variable in slim.get_model_variables():
-        summaries.append(tf.summary.histogram(variable.op.name, variable))
-    summaries.append(tf.summary.scalar('training/Learning Rate', learning_rate))
+        summaries.append(tf.compat.v1.summary.histogram(variable.op.name, variable))
+    summaries.append(tf.compat.v1.summary.scalar('training/Learning Rate', learning_rate))
     return summaries
 
 
@@ -195,7 +195,7 @@ def get_init_fn(flags):
         return None
     # Warn the user if a checkpoint exists in the train_dir. Then ignore.
     if tf.train.latest_checkpoint(flags.train_dir):
-        tf.logging.info(
+        tf.compat.v1.logging.info(
             'Ignoring --checkpoint_path because a checkpoint already exists in %s'
             % flags.train_dir)
         return None
@@ -223,11 +223,11 @@ def get_init_fn(flags):
              for var in variables_to_restore}
 
 
-    if tf.gfile.IsDirectory(flags.checkpoint_path):
+    if tf.io.gfile.isdir(flags.checkpoint_path):
         checkpoint_path = tf.train.latest_checkpoint(flags.checkpoint_path)
     else:
         checkpoint_path = flags.checkpoint_path
-    tf.logging.info('Fine-tuning from %s. Ignoring missing vars: %s' % (checkpoint_path, flags.ignore_missing_vars))
+    tf.compat.v1.logging.info('Fine-tuning from %s. Ignoring missing vars: %s' % (checkpoint_path, flags.ignore_missing_vars))
 
     return slim.assign_from_checkpoint_fn(
         checkpoint_path,
@@ -242,13 +242,13 @@ def get_variables_to_train(flags):
       A list of variables to train by the optimizer.
     """
     if flags.trainable_scopes is None:
-        return tf.trainable_variables()
+        return tf.compat.v1.trainable_variables()
     else:
         scopes = [scope.strip() for scope in flags.trainable_scopes.split(',')]
 
     variables_to_train = []
     for scope in scopes:
-        variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
+        variables = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope)
         variables_to_train.extend(variables)
     return variables_to_train
 

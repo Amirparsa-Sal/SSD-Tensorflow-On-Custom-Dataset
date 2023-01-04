@@ -53,22 +53,22 @@ def get_split(split_name, dataset_dir, file_pattern, reader,
 
     # Allowing None in the signature so that dataset_factory can use the default.
     if reader is None:
-        reader = tf.TFRecordReader
+        reader = tf.compat.v1.TFRecordReader
     # Features in Pascal VOC TFRecords.
     keys_to_features = {
-        'image/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
-        'image/format': tf.FixedLenFeature((), tf.string, default_value='jpeg'),
-        'image/height': tf.FixedLenFeature([1], tf.int64),
-        'image/width': tf.FixedLenFeature([1], tf.int64),
-        'image/channels': tf.FixedLenFeature([1], tf.int64),
-        'image/shape': tf.FixedLenFeature([3], tf.int64),
-        'image/object/bbox/xmin': tf.VarLenFeature(dtype=tf.float32),
-        'image/object/bbox/ymin': tf.VarLenFeature(dtype=tf.float32),
-        'image/object/bbox/xmax': tf.VarLenFeature(dtype=tf.float32),
-        'image/object/bbox/ymax': tf.VarLenFeature(dtype=tf.float32),
-        'image/object/bbox/label': tf.VarLenFeature(dtype=tf.int64),
-        'image/object/bbox/difficult': tf.VarLenFeature(dtype=tf.int64),
-        'image/object/bbox/truncated': tf.VarLenFeature(dtype=tf.int64),
+        'image/encoded': tf.io.FixedLenFeature((), tf.string, default_value=''),
+        'image/format': tf.io.FixedLenFeature((), tf.string, default_value='jpeg'),
+        'image/height': tf.io.FixedLenFeature([1], tf.int64),
+        'image/width': tf.io.FixedLenFeature([1], tf.int64),
+        'image/channels': tf.io.FixedLenFeature([1], tf.int64),
+        'image/shape': tf.io.FixedLenFeature([3], tf.int64),
+        'image/object/bbox/xmin': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/ymin': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/xmax': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/ymax': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/label': tf.io.VarLenFeature(dtype=tf.int64),
+        'image/object/bbox/difficult': tf.io.VarLenFeature(dtype=tf.int64),
+        'image/object/bbox/truncated': tf.io.VarLenFeature(dtype=tf.int64),
     }
     items_to_handlers = {
         'image': slim.tfexample_decoder.Image('image/encoded', 'image/format'),

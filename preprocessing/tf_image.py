@@ -149,7 +149,7 @@ def bboxes_crop_or_pad(bboxes,
         negative if cropping, positive if padding;
       target_height, target_width: Target dimension after cropping / padding.
     """
-    with tf.name_scope('bboxes_crop_or_pad'):
+    with tf.compat.v1.name_scope('bboxes_crop_or_pad'):
         # Rescale bounding boxes in pixels.
         scale = tf.cast(tf.stack([height, width, height, width]), bboxes.dtype)
         bboxes = bboxes * scale
@@ -184,7 +184,7 @@ def resize_image_bboxes_with_crop_or_pad(image, bboxes,
       Cropped and/or padded image of shape
         `[target_height, target_width, channels]`
     """
-    with tf.name_scope('resize_with_crop_or_pad'):
+    with tf.compat.v1.name_scope('resize_with_crop_or_pad'):
         image = ops.convert_to_tensor(image, name='image')
 
         assert_ops = []
@@ -269,10 +269,10 @@ def resize_image(image, size,
     """Resize an image and bounding boxes.
     """
     # Resize image.
-    with tf.name_scope('resize_image'):
+    with tf.compat.v1.name_scope('resize_image'):
         height, width, channels = _ImageDimensions(image)
         image = tf.expand_dims(image, 0)
-        image = tf.image.resize_images(image, size,
+        image = tf.image.resize(image, size,
                                        method, align_corners)
         image = tf.reshape(image, tf.stack([size[0], size[1], channels]))
         return image
@@ -289,7 +289,7 @@ def random_flip_left_right(image, bboxes, seed=None):
         return bboxes
 
     # Random flip. Tensorflow implementation.
-    with tf.name_scope('random_flip_left_right'):
+    with tf.compat.v1.name_scope('random_flip_left_right'):
         image = ops.convert_to_tensor(image, name='image')
         _Check3DImage(image, require_static=False)
         uniform_random = random_ops.random_uniform([], 0, 1.0, seed=seed)
